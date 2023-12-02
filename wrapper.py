@@ -31,12 +31,23 @@ def get_next_weekday(date):
         next_day += datetime.timedelta(days=1)
     return next_day
 
+import subprocess
+
 def create_cron_job(date, script_path):
-    # Befehl zum Erstellen eines einmaligen Cronjobs für den spezifischen Tag
+    # Festlegen des neuen Cronjob-Eintrags
     day = date.day
     month = date.month
-    command = f"(crontab -l ; echo '*/30 6-19 {day} {month} * python {script_path}') | crontab -"
-    subprocess.run(command, shell=True)
+    new_cron_entry = f"*/30 6-19 {day} {month} * python {script_path}"
+
+    # Aktuelle Crontab-Einträge auslesen
+    current_crontab = subprocess.check_output("crontab -l", shell=True).decode()
+
+    # Überprüfen, ob der Eintrag bereits existiert
+    if new_cron_entry not in current_crontab:
+        # Befehl zum Hinzufügen des neuen Cronjobs, falls nicht vorhanden
+        command = f"(echo '{current_crontab}'; echo '{new_cron_entry}') | crontab -"
+        subprocess.run(command, shell=True)
+
 
 # Hauptlogik des Skripts
 today = datetime.datetime.now().date()
