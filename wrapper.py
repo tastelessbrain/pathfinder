@@ -60,3 +60,7 @@ if is_holiday(today, country_code, region) or is_weekend(today):
     next_day = get_next_weekday(today)
     create_cron_job(next_day, script_path)
     print(next_day, today)
+else:
+    # Pfad zur pathfinder.py im gleichen Projektordner
+    pathfinder_path = os.path.join(os.path.dirname(script_path), "pathfinder.py")
+    subprocess.run(["python", pathfinder_path])

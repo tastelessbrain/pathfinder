@@ -17,6 +17,24 @@ class Wohnung:
     Kaltmiete: str = "Error: Value not found."
     Link: str = "Error: Value not found."
 
+#Run Counter
+COUNTER_PATH = "counter.json"
+MAX_RUNS_PER_DAY = 26
+
+def read_counter():
+    if not os.path.exists(COUNTER_PATH):
+        return 0
+    with open(COUNTER_PATH, "r") as file:
+        return int(file.read())
+
+def update_counter(counter):
+    with open(COUNTER_PATH, "w") as file:
+        file.write(str(counter))
+
+def reset_counter():
+    update_counter(0)
+#Run counter end
+
 def extract_info(div_item):
     # Erstellen einer Instanz der Wohnung-Datenklasse
     result = Wohnung()
@@ -41,7 +59,6 @@ def extract_info(div_item):
         result.Link = "https://www.familienheim-freiburg.de" + link_tag['href']
 
     return result
-
 
 def get_saved_results(file_path):
     try:
@@ -79,7 +96,9 @@ def format_ergebnis_message(ergebnis):
 # Hauptfunktion, die den Bot ausführt
 async def run_bot():
     # URL der Webseite und Pfad zur Speicherdatei
-    url = "https://www.familienheim-freiburg.de/wohnungen/vermietung/freiburg.php"
+    #url = "https://www.familienheim-freiburg.de/wohnungen/vermietung/umland.php"
+    url = "https://www.familienheim-freiburg.de/wohnungen/vermietung/freiburg.php#"
+    check_url = "https://www.familienheim-freiburg.de/wohnungen/vermietung/freiburg.php#"
     save_file_path = "last_results.json"
 
     # Telegram Bot Token und Chat ID
@@ -122,10 +141,20 @@ async def run_bot():
             for find in new_finds:
                 formatted_message = format_ergebnis_message(find)
                 await send_telegram_message(bot_token, chat_id, formatted_message)
-        else:
-            await send_telegram_message(bot_token, chat_id, "Keine neuen Funde")
+        if not items and counter >= MAX_RUNS_PER_DAY - 1:
+            await send_telegram_message(bot_token, chat_id, "Keine Funde auf der Webseite. Check Yourself:\n" + check_url)
+
+        elif items and counter >= MAX_RUNS_PER_DAY - 1:
+            await send_telegram_message(bot_token, chat_id, "Heute keine neuen Funde! Check Yourself:\n" + check_url)
     else:
         await send_telegram_message(bot_token, chat_id, "Fehler beim Abrufen der Webseite: Statuscode", response.status_code)
 
 if __name__ == '__main__':
-    asyncio.run(run_bot())
+    #Counter einlesen
+    counter = read_counter()
+    if counter < MAX_RUNS_PER_DAY - 1:
+        asyncio.run(run_bot())
+        update_counter(counter + 1)
+    else:
+        asyncio.run(run_bot())
+        reset_counter()
