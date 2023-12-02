@@ -31,20 +31,27 @@ def get_next_weekday(date):
         next_day += datetime.timedelta(days=1)
     return next_day
 
+def remove_tempjobs(current_crontab):
+    # Entfernt alle Cron-Einträge, die mit #tempjob markiert sind
+    return '\n'.join(line for line in current_crontab.splitlines() if "#tempjob" not in line)
+
 def create_cron_job(date, script_path):
-    # Festlegen des neuen Cronjob-Eintrags
     day = date.day
     month = date.month
-    new_cron_entry = f"*/30 6-19 {day} {month} * python {script_path}"
+    new_cron_entry = f"*/30 6-19 {day} {month} * python {script_path} #tempjob"
 
-    # Aktuelle Crontab-Einträge auslesen
     current_crontab = subprocess.check_output("crontab -l", shell=True).decode()
+    
+    # Zählen, wie viele #tempjob Einträge vorhanden sind
+    tempjob_count = current_crontab.count("#tempjob")
 
-    # Überprüfen, ob der Eintrag bereits existiert
-    if new_cron_entry not in current_crontab:
-        # Befehl zum Hinzufügen des neuen Cronjobs, falls nicht vorhanden
-        command = f"(echo '{current_crontab}'; echo '{new_cron_entry}') | crontab -"
-        subprocess.run(command, shell=True)
+    # Wenn zwei oder mehr #tempjob Einträge existieren, entferne sie alle
+    if tempjob_count >= 2:
+        current_crontab = remove_tempjobs(current_crontab)
+
+    # Hinzufügen des neuen Cronjobs
+    updated_crontab = f"{current_crontab}\n{new_cron_entry}"
+    subprocess.run(f"echo '{updated_crontab}' | crontab -", shell=True)
 
 
 # Hauptlogik des Skripts
