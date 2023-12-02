@@ -31,8 +31,6 @@ def get_next_weekday(date):
         next_day += datetime.timedelta(days=1)
     return next_day
 
-import subprocess
-
 def create_cron_job(date, script_path):
     # Festlegen des neuen Cronjob-Eintrags
     day = date.day
@@ -51,7 +49,8 @@ def create_cron_job(date, script_path):
 
 # Hauptlogik des Skripts
 today = datetime.datetime.now().date()
-specific_date = datetime.date(2024, 1, 1)
+#Specific Date for Debugging
+specific_date = datetime.date(2023, 12, 1)
 country_code = "DE"  # Deutschland
 region = "BW"  # Baden-Württemberg
 script_path = "/home/pi/pathfinder/wrapper.py"
@@ -64,3 +63,4 @@ else:
     # Pfad zur pathfinder.py im gleichen Projektordner
     pathfinder_path = os.path.join(os.path.dirname(script_path), "pathfinder.py")
     subprocess.run(["python", pathfinder_path])
+    print("Bot Exec finished.")
