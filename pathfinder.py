@@ -31,7 +31,7 @@ class Wohnung:
 ############################################
 #run counter for end of day message && result counter
 run_counter_path = os.path.expanduser("~/pathfinder/run_counter.json") #path to run counter
-max_runs_per_day = 26 #!Configurable max runs per day | needs to be adjusted if cronjob is changed
+max_runs_per_day = 4 #!Configurable max runs per day | needs to be adjusted if cronjob is changed
 result_counter_path = os.path.expanduser("~/pathfinder/result_counter.json") #path to result counter
 
 #read the counter

@@ -8,21 +8,7 @@ import subprocess
 #import .env file
 load_dotenv()
 
-############################################
-#Run Counter for Debugging to be removed
-COUNTER_PATH = os.path.expanduser("~/pathfinder/wrapper_counter.json")
-
-def read_counter():
-    if not os.path.exists(COUNTER_PATH):
-        return 0
-    with open(COUNTER_PATH, "r") as file:
-        return int(file.read())
-
-def update_counter(counter):
-    with open(COUNTER_PATH, "w") as file:
-        file.write(str(counter))
-#Run counter end
-############################################
+##############################################################################
 
 #Date and Holiday functions
 def is_weekend(date):
@@ -76,26 +62,21 @@ def create_cron_job(date, wrapper_path):
     updated_crontab = f"{current_crontab}\n{new_cron_entry}"
     subprocess.run(f'echo "{updated_crontab}" | crontab -', shell=True)
 
-######################################################################################################################
+##############################################################################
     
 #Hauptlogik des Skripts
-#today = datetime.datetime.now().date()
+today = datetime.datetime.now().date()
 #Specific Date for Debugging
-today = datetime.date(2023, 12, 15)
+#today = datetime.date(2023, 12, 15)
 country_code = "DE"  # Deutschland
 region = "BW"  # Baden-Württemberg
 wrapper_path = os.path.expanduser("~/pathfinder/wrapper.py")            #needs to be checked 
 
-counter = read_counter()
 if is_holiday(today, country_code, region) or is_weekend(today):
     next_date = get_next_workday(today)
     create_cron_job(next_date, wrapper_path)
-    update_counter(counter + 1)
-    #print(next_date, today)
 else:
     # Pfad zur pathfinder.py im gleichen Projektordner
-    pathfinder_path = os.path.expanduser("~/pathfinder/pathfinder.py")  #correct path?
+    pathfinder_path = os.path.expanduser("~/pathfinder/pathfinder.py")
     subprocess.run(["/usr/bin/python3", pathfinder_path])
-    update_counter(counter + 1)
-    print(pathfinder_path, counter) #Debugging                          #Debugging
     print("Bot Exec finished.")

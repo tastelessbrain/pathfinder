@@ -4,6 +4,9 @@
 # Ignore all .env files
 *.env
 
+# Ignore all .log files
+*.log
+
 # Ignore specific directories
 /php/
 /backup_pathfinder/
