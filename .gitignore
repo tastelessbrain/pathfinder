@@ -1,2 +1,9 @@
-.env
-.json
+# Ignore all .json files
+*.json
+
+# Ignore all .env files
+*.env
+
+# Ignore specific directories
+/php/
+/backup_pathfinder/

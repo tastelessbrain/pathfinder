@@ -1,18 +1,37 @@
+#import required modules
 from dotenv import load_dotenv
 import os
 import datetime
 import requests
 import subprocess
 
+#import .env file
 load_dotenv()
-CAL_API = os.getenv("CAL_API")
 
+############################################
+#Run Counter for Debugging to be removed
+COUNTER_PATH = os.path.expanduser("~/pathfinder/wrapper_counter.json")
+
+def read_counter():
+    if not os.path.exists(COUNTER_PATH):
+        return 0
+    with open(COUNTER_PATH, "r") as file:
+        return int(file.read())
+
+def update_counter(counter):
+    with open(COUNTER_PATH, "w") as file:
+        file.write(str(counter))
+#Run counter end
+############################################
+
+#Date and Holiday functions
 def is_weekend(date):
     return date.weekday() > 4
 
+#Copy paste out of Calendarific Doku.
 def is_holiday(date, country_code, region):
     api_url = "https://calendarific.com/api/v2/holidays"
-    api_key = CAL_API
+    api_key = os.getenv("CAL_API")
     params = {
         "api_key": api_key,
         "country": country_code,
@@ -20,54 +39,63 @@ def is_holiday(date, country_code, region):
         "location": region
     }
 
-    response = requests.get(api_url, params=params)
+    response = requests.get(api_url, params) #params=
     holidays = response.json().get('response', {}).get('holidays', [])
     
     return any(hol['date']['iso'] == date.isoformat() for hol in holidays)
 
-def get_next_weekday(date):
+def get_next_workday(date):
     next_day = date + datetime.timedelta(days=1)
-    while is_weekend(next_day):
+    while is_weekend(next_day) or is_holiday(next_day, country_code, region):
         next_day += datetime.timedelta(days=1)
     return next_day
+#End of Copy and Paste
 
 def remove_tempjobs(current_crontab):
     # Entfernt alle Cron-Einträge, die mit #tempjob markiert sind
-    return '\n'.join(line for line in current_crontab.splitlines() if "#tempjob" not in line)
+    filtered_lines = []
+    for line in current_crontab.splitlines():
+        if "#tempjob" not in line:
+            filtered_lines.append(line)
+    return '\n'.join(filtered_lines)
 
-def create_cron_job(date, script_path):
+def create_cron_job(date, wrapper_path):
     day = date.day
     month = date.month
-    new_cron_entry = f"*/30 6-19 {day} {month} * python {script_path} #tempjob"
+    #Check if CRONJOB is correct
+    new_cron_entry = f"*/30 6-19 {day} {month} * python3 {wrapper_path} #tempjob"
 
+    # Aktuelle Crontabs auslesen
     current_crontab = subprocess.check_output("crontab -l", shell=True).decode()
-    
     # Zählen, wie viele #tempjob Einträge vorhanden sind
     tempjob_count = current_crontab.count("#tempjob")
-
-    # Wenn zwei oder mehr #tempjob Einträge existieren, entferne sie alle
-    if tempjob_count >= 2:
+    # Wenn ein oder mehr #tempjob Einträge existieren, entferne sie alle
+    if tempjob_count > 0:
         current_crontab = remove_tempjobs(current_crontab)
-
     # Hinzufügen des neuen Cronjobs
     updated_crontab = f"{current_crontab}\n{new_cron_entry}"
-    subprocess.run(f"echo '{updated_crontab}' | crontab -", shell=True)
+    subprocess.run(f'echo "{updated_crontab}" | crontab -', shell=True)
 
-
-# Hauptlogik des Skripts
-today = datetime.datetime.now().date()
+######################################################################################################################
+    
+#Hauptlogik des Skripts
+#today = datetime.datetime.now().date()
 #Specific Date for Debugging
-specific_date = datetime.date(2023, 12, 1)
+today = datetime.date(2023, 12, 15)
 country_code = "DE"  # Deutschland
 region = "BW"  # Baden-Württemberg
-script_path = "/home/pi/pathfinder/wrapper.py"
+wrapper_path = os.path.expanduser("~/pathfinder/wrapper.py")            #needs to be checked 
 
+counter = read_counter()
 if is_holiday(today, country_code, region) or is_weekend(today):
-    next_day = get_next_weekday(today)
-    create_cron_job(next_day, script_path)
-    print(next_day, today)
+    next_date = get_next_workday(today)
+    create_cron_job(next_date, wrapper_path)
+    update_counter(counter + 1)
+    #print(next_date, today)
 else:
     # Pfad zur pathfinder.py im gleichen Projektordner
-    pathfinder_path = os.path.join(os.path.dirname(script_path), "pathfinder.py")
-    subprocess.run(["python", pathfinder_path])
+    pathfinder_path = os.path.expanduser("~/pathfinder/pathfinder.py")  #correct path?
+    subprocess.run(["/usr/bin/python3", pathfinder_path])
+    update_counter(counter + 1)
+    print(pathfinder_path, counter) #Debugging                          #Debugging
     print("Bot Exec finished.")
