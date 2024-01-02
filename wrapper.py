@@ -49,7 +49,7 @@ def create_cron_job(date, wrapper_path):
     day = date.day
     month = date.month
     #Check if CRONJOB is correct
-    new_cron_entry = f"*/30 6-19 {day} {month} * python3 {wrapper_path} #tempjob"
+    new_cron_entry = f"*/30 6-18 {day} {month} * python3 {wrapper_path} #tempjob"
 
     # Aktuelle Crontabs auslesen
     current_crontab = subprocess.check_output("crontab -l", shell=True).decode()
