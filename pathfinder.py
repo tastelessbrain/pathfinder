@@ -180,7 +180,7 @@ def construct_end_of_day_message():
     no_new_flats_message = (
         f"End of day message:\n"
         f"Es wurden leider keine neuen Wohnungen gefunden.\n"
-        f"Check yourself: https://www.familienheim-freiburg.de/wohnungen/vermietung/freiburg.html\n"
+        f"Check yourself: https://www.familienheim-freiburg.de/wohnungen/vermietung/freiburg.php\n"
         f"Good night!"
     )
     new_flats_message = (
@@ -241,7 +241,7 @@ else:
 
     #get the html of freiburg overview page
     #live url
-    freiburg_req = visit_url("https://www.familienheim-freiburg.de/wohnungen/vermietung/freiburg.html")
+    freiburg_req = visit_url("https://www.familienheim-freiburg.de/wohnungen/vermietung/freiburg.php")
     #local url for testing
     #!freiburg_req = visit_url("http://localhost/wohnungen/vermietung/freiburg2.html")
 
