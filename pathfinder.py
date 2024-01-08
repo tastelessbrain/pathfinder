@@ -13,7 +13,14 @@ import asyncio #on my scale not really necessary but needed for telegram message
 
 load_dotenv() #load .env file
 
+#important variables & paths
+#run counter for end of day message && result counter
+run_counter_path = os.path.expanduser("~/pathfinder/run_counter.json") #path to run counter
+max_runs_per_day = 4 #!Configurable max runs per day | needs to be adjusted if cronjob is changed
+result_counter_path = os.path.expanduser("~/pathfinder/result_counter.json") #path to result counter
+
 ############################################
+#############Flat Object####################
 @dataclass
 class Wohnung:
     Adresse: str = "Error: Value not found."
@@ -24,16 +31,13 @@ class Wohnung:
     Mail: str = "Error: Value not found."
     Telefon: str = "Error: Value not found."
     Link: str = "Error: Value not found."
-    #id: str = "Error: Value not found."    #not really necessary at this scale also i can use other fields for unique identification for example the string of the linkin the link is unique
+    id: str = "Error: Value not found."    #not really necessary at this scale also i can use other fields for unique identification for example the string of the linkin the link is unique
     found: str = "Error: Value not found."  #not yet needed either but could be used for more detailed messages | also prevents a flat from getting ignored if it os online again after some time
+
 ############################################
 
 ############################################
-#run counter for end of day message && result counter
-run_counter_path = os.path.expanduser("~/pathfinder/run_counter.json") #path to run counter
-max_runs_per_day = 24 #!Configurable max runs per day | needs to be adjusted if cronjob is changed
-result_counter_path = os.path.expanduser("~/pathfinder/result_counter.json") #path to result counter
-
+##############Counter handdling#############
 #read the counter
 def read_counter(counter_path):
     if not os.path.exists(counter_path): #if run counter file does not exist return 0
@@ -90,6 +94,15 @@ def add_new_search_result(flat):
     saved_search_results.append(flat) #add the new search result to the saved search results
     with open(os.path.expanduser("~/pathfinder/saved_search_results.json"), "w") as file: #write the new search results to the search results file
         json.dump(saved_search_results, file)
+
+#variable for uid generation
+global_uid = len(read_saved_search_results())
+
+#uid generator
+def create_uid():
+    global global_uid
+    global_uid += 1
+    return global_uid
 ############################################
 
 ############################################
@@ -132,12 +145,12 @@ def construct_flat_from_div_item(div_item):
     link_tag = div_item.find('a', class_='mehrinfo')
     if link_tag and 'href' in link_tag.attrs:
         #TODO: check / handling in urljoin and strucutre of link_tag in live environment
-        base_url = "https://www.familienheim-freiburg.de/wohnungen/vermietung/" #base url for live environment
-        #!base_url = "http://localhost/wohnungen/vermietung/" #base url for local testing
+        #!base_url = "https://www.familienheim-freiburg.de/wohnungen/vermietung/" #base url for live environment
+        base_url = "http://localhost/wohnungen/vermietung/" #base url for local testing
         result.Link = urljoin(base_url, link_tag['href'])
     
     #id generieren
-    #result.id = str(uuid.uuid4())
+    result.id = create_uid()
 
     return result
 
@@ -200,7 +213,7 @@ async def send_telegram_message(message):
     bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
     chat_id = os.getenv("TELEGRAM_CHAT_ID")
     bot = telegram.Bot(bot_token)
-    reply_markup = telegram.InlineKeyboardMarkup([[telegram.InlineKeyboardButton("Reply", callback_data="reply")]])
+    reply_markup = telegram.InlineKeyboardMarkup([[telegram.InlineKeyboardButton("Reply", callback_data=result['id'])]])
     async with bot:
         await bot.send_message(text=message, chat_id=chat_id, reply_markup=reply_markup)
 ############################################
@@ -241,9 +254,9 @@ else:
 
     #get the html of freiburg overview page
     #live url
-    freiburg_req = visit_url("https://www.familienheim-freiburg.de/wohnungen/vermietung/freiburg.php")
+    #!freiburg_req = visit_url("https://www.familienheim-freiburg.de/wohnungen/vermietung/freiburg.php")
     #local url for testing
-    #!freiburg_req = visit_url("http://localhost/wohnungen/vermietung/freiburg2.html")
+    freiburg_req = visit_url("http://localhost/wohnungen/vermietung/freiburg2.html")
 
     #check if request was successful
     if freiburg_req.status_code == 200:
