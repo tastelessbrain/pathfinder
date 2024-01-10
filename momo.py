@@ -1,6 +1,7 @@
 import logging
 import json
 import os
+import subprocess
 from telegram import Update
 from telegram.ext import Application, MessageHandler, CallbackQueryHandler, filters, ContextTypes
 
@@ -28,20 +29,22 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
     logger.info(f'Received callback data: {callback_data}')
     print(f'Received callback data: {callback_data}')
 
-    # Load the saved search results
-    with open('saved_search_results.json') as f:
-        search_results = json.load(f)
+    subprocess.run(["/usr/bin/python3", os.path.expanduser("~/pathfinder/columba.py"), callback_data])
 
-    # Get the object corresponding to the ID from the callback data
-    object_id = int(callback_data)  # Assuming the callback data is a string representation of the ID
-
-    # Iterate over the search results to find the object with the given ID
-    for result in search_results:
-        if result['id'] == object_id:
-            print(f'Object with ID {object_id}: {result}')
-            break
-    else:
-        print(f'No object found with ID {object_id}')
+    ## Load the saved search results
+    #with open('saved_search_results.json') as f:
+    #    search_results = json.load(f)
+    #
+    ## Get the object corresponding to the ID from the callback data
+    #object_id = int(callback_data)  # Assuming the callback data is a string representation of the ID
+    #
+    ## Iterate over the search results to find the object with the given ID
+    #for result in search_results:
+    #    if result['id'] == object_id:
+    #        print(f'Object with ID {object_id}: {result}')
+    #        break
+    #else:
+    #    print(f'No object found with ID {object_id}')
 
 def main() -> None:
     # Create the Application and pass it your bot's token.
