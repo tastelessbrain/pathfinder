@@ -190,6 +190,7 @@ def construct_flat_result_message(flat):
     return message
 
 def construct_end_of_day_message():
+    reply_markup = telegram.InlineKeyboardMarkup([[telegram.InlineKeyboardButton("DO NOT Reply", callback_data="None")]])
     no_new_flats_message = (
         f"End of day message:\n"
         f"Es wurden leider keine neuen Wohnungen gefunden.\n"
@@ -296,14 +297,16 @@ else:
                 #get and add the name, mail and phone number from the asp div
                 asp_name = asp_div.find('strong').get_text(strip=True)
                 result['Kontakt'] = asp_name
-                asp_mail = asp_div.find('a').get('href').strip('mailto:') #strip mailto: from the mail as it is not needed
+                print(asp_div.find('a'))
+                asp_mail = asp_div.find('a').get('href').replace('mailto:', '') #strip mailto: from the mail as it is not needed
                 result['Mail'] = asp_mail
+                print(asp_mail)
                 asp_phone = extract_phone_number(asp_div)
                 result['Telefon'] = asp_phone
 
             else:                
                 #send telegram message | not yet implemented
-                asyncio.run(send_telegram_message(f"An Error occured while trying to get the detail page of a flat. Statuscode: {detail_req.status_code} {result['Link']}"))
+                asyncio.run(send_telegram_message(f"An Error occured while trying to get the detail page of a flat. Statuscode: {detail_req.status_code} {result['Link']}")) #TODO: check if reply_markup throws an error here
 
             #save the new search results to saved_search_results.json
             add_new_search_result(result)
@@ -319,5 +322,5 @@ else:
             update_counter(0, run_counter_path)
     else:
         #telegram Nachricht senden
-        asyncio.run(send_telegram_message(f"An Error occured while trying to get the overview page of the flats. Statuscode: {freiburg_req.status_code} \n {freiburg_req.url}"))
+        asyncio.run(send_telegram_message(f"An Error occured while trying to get the overview page of the flats. Statuscode: {freiburg_req.status_code} \n {freiburg_req.url}")) #TODO: check if reply_markup throws an error here
         exit
