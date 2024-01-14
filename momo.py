@@ -7,7 +7,7 @@ from telegram.ext import Application, MessageHandler, CallbackQueryHandler, filt
 
 # Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                    level=logging.INFO)
+                    level=logging.CRITICAL)
 
 logger = logging.getLogger(__name__)
 
