@@ -79,9 +79,14 @@ def get_passed_data():
     # Check if an argument was passed
     print(len(sys.argv))
     if len(sys.argv) == 2:
-        arg = int(sys.argv[1])
-        print(arg)
-        return arg
+        arg = sys.argv[1]
+        if arg.startswith("p"):
+            previev = True
+            id = int(arg[1:])
+        else:
+            previev = False
+            id = int(arg)
+        return id, previev
         
     else:
         asyncio.run(send_telegram_message(f"An Error occured while passing Reply-Data to Columba.\nMaybe wrong number of args.\nPassed-Data: {sys.argv}"))
@@ -90,7 +95,7 @@ def load_data_with_id(saved_flats, object_id):
     flat = saved_flats[object_id - 1]
     return flat
 
-def send_email(flat_data):
+def send_email(flat_data, previev):
     # Configure logging
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
     
@@ -103,8 +108,11 @@ def send_email(flat_data):
     print(self_phone_number)
 
     #maildata
-    mail_to = flat_data['Mail']
-    mail_bcc = "acc.register@outlook.de"
+    if previev == True:
+        mail_to = "acc.register@outlook.de"
+    elif previev == False:
+        mail_to = flat_data['Mail']
+    mail_bcc = "acc.register+bcc@outlook.de"
     mail_subject = f"Bewerbung auf die {flat_data['Zimmer']}-Zimmer Wohnung | {flat_data['Adresse']}."
 
     # Create the email
@@ -148,10 +156,10 @@ def send_email(flat_data):
 
 def main():
     saved_flats = load_flats()
-    object_id = get_passed_data()
+    object_id, preview = get_passed_data()
     data = load_data_with_id(saved_flats, object_id)
     print(data)
-    send_email(data)
+    send_email(data, preview)
 
 
 if __name__ == '__main__':

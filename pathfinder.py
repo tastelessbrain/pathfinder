@@ -187,10 +187,17 @@ def construct_flat_result_message(flat):
         f"Telefon: {flat['Telefon']}\n"
         f"Link: {flat['Link']}\n"
     )
-    return message
+
+    reply_markup = telegram.InlineKeyboardMarkup([
+        [telegram.InlineKeyboardButton("Preview Mail", callback_data=f"p{result['id']}")],
+        [telegram.InlineKeyboardButton("Apply", callback_data=result['id'])]
+    ])
+
+    return message, reply_markup
 
 def construct_end_of_day_message():
     reply_markup = telegram.InlineKeyboardMarkup([[telegram.InlineKeyboardButton("DO NOT Reply", callback_data="None")]])
+
     no_new_flats_message = (
         f"End of day message:\n"
         f"Es wurden leider keine neuen Wohnungen gefunden.\n"
@@ -205,16 +212,38 @@ def construct_end_of_day_message():
     )
     if read_counter(result_counter_path) > 0:
         update_counter(0, result_counter_path) #reset the result counter
-        return new_flats_message
+        return new_flats_message, reply_markup
     elif read_counter(result_counter_path) == 0:
-        return no_new_flats_message
+        return no_new_flats_message, reply_markup
+    
+def construct_overview_error_message():
+    reply_markup = telegram.InlineKeyboardMarkup([[telegram.InlineKeyboardButton("DO NOT Reply", callback_data="None")]])
+
+    error_message = (
+        f"An Error occured while trying to get the overview page of the flats.\n"
+        f"Check yourself: https://www.familienheim-freiburg.de/wohnungen/vermietung/freiburg.php\n"
+        f"Error: {freiburg_req.status_code}"
+        f"Good night!"
+    )
+    return error_message, reply_markup
+
+def construct_detail_error_message():
+    reply_markup = telegram.InlineKeyboardMarkup([[telegram.InlineKeyboardButton("DO NOT Reply", callback_data="None")]])
+
+    error_message = (
+        f"An Error occured while trying to get the detail page of a flat.\n"
+        f"Check yourself: {result['Link']}"
+        f"Error: {detail_req.status_code}"
+        f"Good night!"
+    )
+    return error_message, reply_markup
 
 #send a telegram message through the bot | api token and chat id are stored in .env file
-async def send_telegram_message(message):
+async def send_telegram_message(message, reply_markup):
     bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
     chat_id = os.getenv("TELEGRAM_CHAT_ID")
     bot = telegram.Bot(bot_token)
-    reply_markup = telegram.InlineKeyboardMarkup([[telegram.InlineKeyboardButton("Apply", callback_data=result['id'])]])
+    #reply_markup = telegram.InlineKeyboardMarkup([[telegram.InlineKeyboardButton("Apply", callback_data=result['id'])]])
     async with bot:
         await bot.send_message(text=message, chat_id=chat_id, reply_markup=reply_markup)
 ############################################
@@ -306,21 +335,22 @@ else:
 
             else:                
                 #send telegram message | not yet implemented
-                asyncio.run(send_telegram_message(f"An Error occured while trying to get the detail page of a flat. Statuscode: {detail_req.status_code} {result['Link']}")) #TODO: check if reply_markup throws an error here
+                asyncio.run(send_telegram_message(*construct_detail_error_message())) #TODO: check if reply_markup throws an error here
 
             #save the new search results to saved_search_results.json
             add_new_search_result(result)
 
             #send telegram message with flat information.
-            asyncio.run(send_telegram_message(construct_flat_result_message(result)))
+            print(construct_flat_result_message(result))
+            asyncio.run(send_telegram_message(*construct_flat_result_message(result)))
 
         #end of day message handling && reset run counter
         if read_counter(run_counter_path) == max_runs_per_day:
             #send telegram message with end of day message
-            asyncio.run(send_telegram_message(construct_end_of_day_message()))
+            asyncio.run(send_telegram_message(*construct_end_of_day_message()))
             #reset the run counter
             update_counter(0, run_counter_path)
     else:
         #telegram Nachricht senden
-        asyncio.run(send_telegram_message(f"An Error occured while trying to get the overview page of the flats. Statuscode: {freiburg_req.status_code} \n {freiburg_req.url}")) #TODO: check if reply_markup throws an error here
+        asyncio.run(send_telegram_message(*construct_overview_error_message())) #TODO: check if reply_markup throws an error here
         exit
