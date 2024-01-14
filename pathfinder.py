@@ -214,7 +214,7 @@ async def send_telegram_message(message):
     bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
     chat_id = os.getenv("TELEGRAM_CHAT_ID")
     bot = telegram.Bot(bot_token)
-    reply_markup = telegram.InlineKeyboardMarkup([[telegram.InlineKeyboardButton("Reply", callback_data=result['id'])]])
+    reply_markup = telegram.InlineKeyboardMarkup([[telegram.InlineKeyboardButton("Apply", callback_data=result['id'])]])
     async with bot:
         await bot.send_message(text=message, chat_id=chat_id, reply_markup=reply_markup)
 ############################################
