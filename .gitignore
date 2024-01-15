@@ -6,6 +6,7 @@
 
 # Ignore all .log files
 *.log
+*.out
 
 # Ignore specific directories
 /php/
