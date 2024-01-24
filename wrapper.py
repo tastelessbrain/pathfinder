@@ -67,7 +67,7 @@ def create_cron_job(date, wrapper_path):
 #Hauptlogik des Skripts
 today = datetime.datetime.now().date()
 #Specific Date for Debugging
-#today = datetime.date(2023, 12, 15)
+#!today = datetime.date(2023, 12, 15)
 country_code = "DE"  # Deutschland
 region = "BW"  # Baden-Württemberg
 wrapper_path = os.path.expanduser("~/pathfinder/wrapper.py")            #needs to be checked 

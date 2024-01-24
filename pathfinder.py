@@ -13,7 +13,14 @@ import asyncio #on my scale not really necessary but needed for telegram message
 
 load_dotenv() #load .env file
 
+#important variables & paths
+#run counter for end of day message && result counter
+run_counter_path = os.path.expanduser("~/pathfinder/run_counter.json") #path to run counter
+max_runs_per_day = 24 #!Configurable max runs per day | needs to be adjusted if cronjob is changed
+result_counter_path = os.path.expanduser("~/pathfinder/result_counter.json") #path to result counter
+
 ############################################
+#############Flat Object####################
 @dataclass
 class Wohnung:
     Adresse: str = "Error: Value not found."
@@ -24,16 +31,13 @@ class Wohnung:
     Mail: str = "Error: Value not found."
     Telefon: str = "Error: Value not found."
     Link: str = "Error: Value not found."
-    #id: str = "Error: Value not found."    #not really necessary at this scale also i can use other fields for unique identification for example the string of the linkin the link is unique
+    id: str = "Error: Value not found."    #not really necessary at this scale also i can use other fields for unique identification for example the string of the linkin the link is unique
     found: str = "Error: Value not found."  #not yet needed either but could be used for more detailed messages | also prevents a flat from getting ignored if it os online again after some time
+
 ############################################
 
 ############################################
-#run counter for end of day message && result counter
-run_counter_path = os.path.expanduser("~/pathfinder/run_counter.json") #path to run counter
-max_runs_per_day = 24 #!Configurable max runs per day | needs to be adjusted if cronjob is changed
-result_counter_path = os.path.expanduser("~/pathfinder/result_counter.json") #path to result counter
-
+##############Counter handdling#############
 #read the counter
 def read_counter(counter_path):
     if not os.path.exists(counter_path): #if run counter file does not exist return 0
@@ -90,6 +94,15 @@ def add_new_search_result(flat):
     saved_search_results.append(flat) #add the new search result to the saved search results
     with open(os.path.expanduser("~/pathfinder/saved_search_results.json"), "w") as file: #write the new search results to the search results file
         json.dump(saved_search_results, file)
+
+#variable for uid generation
+global_uid = len(read_saved_search_results())
+
+#uid generator
+def create_uid():
+    global global_uid
+    global_uid += 1
+    return global_uid
 ############################################
 
 ############################################
@@ -137,7 +150,7 @@ def construct_flat_from_div_item(div_item):
         result.Link = urljoin(base_url, link_tag['href'])
     
     #id generieren
-    #result.id = str(uuid.uuid4())
+    result.id = create_uid()
 
     return result
 
@@ -174,9 +187,17 @@ def construct_flat_result_message(flat):
         f"Telefon: {flat['Telefon']}\n"
         f"Link: {flat['Link']}\n"
     )
-    return message
+
+    reply_markup = telegram.InlineKeyboardMarkup([
+        [telegram.InlineKeyboardButton("Preview Mail", callback_data=f"p{result['id']}")],
+        [telegram.InlineKeyboardButton("Apply", callback_data=result['id'])]
+    ])
+
+    return message, reply_markup
 
 def construct_end_of_day_message():
+    reply_markup = telegram.InlineKeyboardMarkup([[telegram.InlineKeyboardButton("DO NOT Reply", callback_data="None")]])
+
     no_new_flats_message = (
         f"End of day message:\n"
         f"Es wurden leider keine neuen Wohnungen gefunden.\n"
@@ -191,16 +212,38 @@ def construct_end_of_day_message():
     )
     if read_counter(result_counter_path) > 0:
         update_counter(0, result_counter_path) #reset the result counter
-        return new_flats_message
+        return new_flats_message, reply_markup
     elif read_counter(result_counter_path) == 0:
-        return no_new_flats_message
+        return no_new_flats_message, reply_markup
+    
+def construct_overview_error_message():
+    reply_markup = telegram.InlineKeyboardMarkup([[telegram.InlineKeyboardButton("DO NOT Reply", callback_data="None")]])
+
+    error_message = (
+        f"An Error occured while trying to get the overview page of the flats.\n"
+        f"Check yourself: https://www.familienheim-freiburg.de/wohnungen/vermietung/freiburg.php\n"
+        f"Error: {freiburg_req.status_code}"
+        f"Good night!"
+    )
+    return error_message, reply_markup
+
+def construct_detail_error_message():
+    reply_markup = telegram.InlineKeyboardMarkup([[telegram.InlineKeyboardButton("DO NOT Reply", callback_data="None")]])
+
+    error_message = (
+        f"An Error occured while trying to get the detail page of a flat.\n"
+        f"Check yourself: {result['Link']}"
+        f"Error: {detail_req.status_code}"
+        f"Good night!"
+    )
+    return error_message, reply_markup
 
 #send a telegram message through the bot | api token and chat id are stored in .env file
-async def send_telegram_message(message):
+async def send_telegram_message(message, reply_markup):
     bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
     chat_id = os.getenv("TELEGRAM_CHAT_ID")
     bot = telegram.Bot(bot_token)
-    reply_markup = telegram.InlineKeyboardMarkup([[telegram.InlineKeyboardButton("Reply", callback_data="reply")]])
+    #reply_markup = telegram.InlineKeyboardMarkup([[telegram.InlineKeyboardButton("Apply", callback_data=result['id'])]])
     async with bot:
         await bot.send_message(text=message, chat_id=chat_id, reply_markup=reply_markup)
 ############################################
@@ -283,28 +326,31 @@ else:
                 #get and add the name, mail and phone number from the asp div
                 asp_name = asp_div.find('strong').get_text(strip=True)
                 result['Kontakt'] = asp_name
-                asp_mail = asp_div.find('a').get('href').strip('mailto:') #strip mailto: from the mail as it is not needed
+                print(asp_div.find('a'))
+                asp_mail = asp_div.find('a').get('href').replace('mailto:', '') #strip mailto: from the mail as it is not needed
                 result['Mail'] = asp_mail
+                print(asp_mail)
                 asp_phone = extract_phone_number(asp_div)
                 result['Telefon'] = asp_phone
 
             else:                
                 #send telegram message | not yet implemented
-                asyncio.run(send_telegram_message(f"An Error occured while trying to get the detail page of a flat. Statuscode: {detail_req.status_code} {result['Link']}"))
+                asyncio.run(send_telegram_message(*construct_detail_error_message())) #TODO: check if reply_markup throws an error here
 
             #save the new search results to saved_search_results.json
             add_new_search_result(result)
 
             #send telegram message with flat information.
-            asyncio.run(send_telegram_message(construct_flat_result_message(result)))
+            print(construct_flat_result_message(result))
+            asyncio.run(send_telegram_message(*construct_flat_result_message(result)))
 
         #end of day message handling && reset run counter
         if read_counter(run_counter_path) == max_runs_per_day:
             #send telegram message with end of day message
-            asyncio.run(send_telegram_message(construct_end_of_day_message()))
+            asyncio.run(send_telegram_message(*construct_end_of_day_message()))
             #reset the run counter
             update_counter(0, run_counter_path)
     else:
         #telegram Nachricht senden
-        asyncio.run(send_telegram_message(f"An Error occured while trying to get the overview page of the flats. Statuscode: {freiburg_req.status_code} \n {freiburg_req.url}"))
+        asyncio.run(send_telegram_message(*construct_overview_error_message())) #TODO: check if reply_markup throws an error here
         exit
