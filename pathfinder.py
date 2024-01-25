@@ -15,7 +15,7 @@ load_dotenv() #load .env file
 #important variables & paths
 #run counter for end of day message && result counter
 run_counter_path = os.path.expanduser("~/pathfinder/run_counter.json") #path to run counter
-max_runs_per_day = 4 #!Configurable max runs per day | needs to be adjusted if cronjob is changed
+max_runs_per_day = 24 #!Configurable max runs per day | needs to be adjusted if cronjob is changed
 result_counter_path = os.path.expanduser("~/pathfinder/result_counter.json") #path to result counter
 
 ############################################
@@ -145,8 +145,8 @@ def construct_flat_from_div_item(div_item):
     link_tag = div_item.find('a', class_='mehrinfo')
     if link_tag and 'href' in link_tag.attrs:
         #TODO: check / handling in urljoin and strucutre of link_tag in live environment
-        #!base_url = "https://www.familienheim-freiburg.de/wohnungen/vermietung/" #base url for live environment
-        base_url = "http://localhost/wohnungen/vermietung/" #base url for local testing
+        base_url = "https://www.familienheim-freiburg.de/wohnungen/vermietung/" #base url for live environment
+        #!base_url = "http://localhost/wohnungen/vermietung/" #base url for local testing
         result.Link = urljoin(base_url, link_tag['href'])
     
     #id generieren
@@ -285,9 +285,9 @@ else:
 
     #get the html of freiburg overview page
     #live url
-    #!freiburg_req = visit_url("https://www.familienheim-freiburg.de/wohnungen/vermietung/freiburg.php")
+    freiburg_req = visit_url("https://www.familienheim-freiburg.de/wohnungen/vermietung/freiburg.php")
     #local url for testing
-    freiburg_req = visit_url("http://localhost/wohnungen/vermietung/freiburg2.html")
+    #!freiburg_req = visit_url("http://localhost/wohnungen/vermietung/freiburg2.html")
 
     #check if request was successful
     if freiburg_req.status_code == 200:
