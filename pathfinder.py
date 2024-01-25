@@ -6,17 +6,16 @@ from bs4 import BeautifulSoup #import bs4 for html, xml and json handling
 import json #import jsaon for bs4 to be able to handle json
 from dataclasses import dataclass, asdict #import dataclasses for flat object and dictionary for json conversion
 from urllib.parse import urljoin #import urljoin for correct "/" handling in urls
-#import dataclasses #no idea why this is needed but it is for the uuid4 to work
-#import uuid #import uuid for flat object id generation | not really necessary at this scale also i can use other fields for unique identification for example the string of the linkin the link is unique
 import telegram #import telegram bot library for telegram message handling
 import asyncio #on my scale not really necessary but needed for telegram message handling to work
+import re #import regex for number extraction from string
 
 load_dotenv() #load .env file
 
 #important variables & paths
 #run counter for end of day message && result counter
 run_counter_path = os.path.expanduser("~/pathfinder/run_counter.json") #path to run counter
-max_runs_per_day = 24 #!Configurable max runs per day | needs to be adjusted if cronjob is changed
+max_runs_per_day = 4 #!Configurable max runs per day | needs to be adjusted if cronjob is changed
 result_counter_path = os.path.expanduser("~/pathfinder/result_counter.json") #path to result counter
 
 ############################################
@@ -136,7 +135,8 @@ def construct_flat_from_div_item(div_item):
         result.Adresse = adresse_tag.get_text(strip=True)
 
     # Zimmer, Wohnfläche und Kaltmiete extrahieren
-    result.Zimmer = extract_value_from_xlml(div_item, "Zimmer:")
+    #!result.Zimmer = extract_value_from_xlml(div_item, "Zimmer:")
+    result.Zimmer = int(re.search(r'\d+', extract_value_from_xlml(div_item, "Zimmer:")).group()) #here i have to use regex to search for the number in the string because the corresponding field on the webpage seems to be a free text field and not a number field
     result.Wohnfläche = extract_value_from_xlml(div_item, "Wohnfläche:") #look into unicode handling because of \u00b2 is becoming \u00c2\u00b2
     result.Kaltmiete = extract_value_from_xlml(div_item, "Kaltmiete:")
     result.found = str(datetime.datetime.now().date())
@@ -145,8 +145,8 @@ def construct_flat_from_div_item(div_item):
     link_tag = div_item.find('a', class_='mehrinfo')
     if link_tag and 'href' in link_tag.attrs:
         #TODO: check / handling in urljoin and strucutre of link_tag in live environment
-        base_url = "https://www.familienheim-freiburg.de/wohnungen/vermietung/" #base url for live environment
-        #!base_url = "http://localhost/wohnungen/vermietung/" #base url for local testing
+        #!base_url = "https://www.familienheim-freiburg.de/wohnungen/vermietung/" #base url for live environment
+        base_url = "http://localhost/wohnungen/vermietung/" #base url for local testing
         result.Link = urljoin(base_url, link_tag['href'])
     
     #id generieren
@@ -253,15 +253,16 @@ async def send_telegram_message(message, reply_markup):
 
 #if config file does not exist create it
 if not os.path.exists(os.path.expanduser("~/pathfinder/config.json")):
-    #ask for config values #!API Token and Chat ID are setup in .env file
+    #ask for config values
+    #!API Token and Chat ID are setup in .env file
     config = {}
-    config['Nachname'] = input("Nachname: ")
-    config['Vorname'] = input("Vorname: ")
-    config['Mail'] = input("Mail: ")
-    config['Telefon'] = int(input("Telefon: 0-9 ohne +49 "))
-    config['Maximale Kaltmiete'] = int(input("Maximale Kaltmiete: In Euro ohne € Zeichen "))
-    config['Minimale Wohnfläche'] = int(input("Minimale Wohnfläche: In Quadratmeter ohne m² Zeichen "))
-    config['Minimum Zimmer'] = int(input("Minimum Zimmer: (ganze Zahlen) "))
+    config['Nachname'] = input("Nachname: ") #not yet used
+    config['Vorname'] = input("Vorname: ") #not yet used
+    config['Mail'] = input("Mail: ") #not yet used
+    config['Telefon'] = int(input("Telefon: 0-9 ohne +49 ")) #not yet used
+    config['Maximale Kaltmiete'] = int(input("Maximale Kaltmiete: In Euro ohne € Zeichen ")) #in use
+    config['Minimale Wohnfläche'] = int(input("Minimale Wohnfläche: In Quadratmeter ohne m² Zeichen ")) #in use
+    config['Minimum Zimmer'] = int(input("Minimum Zimmer: (ganze Zahlen) ")) #not yet used
 
     #write config to config file
     with open(os.path.expanduser("~/pathfinder/config.json"), "w") as file:
@@ -284,9 +285,9 @@ else:
 
     #get the html of freiburg overview page
     #live url
-    freiburg_req = visit_url("https://www.familienheim-freiburg.de/wohnungen/vermietung/freiburg.php")
+    #!freiburg_req = visit_url("https://www.familienheim-freiburg.de/wohnungen/vermietung/freiburg.php")
     #local url for testing
-    #!freiburg_req = visit_url("http://localhost/wohnungen/vermietung/freiburg2.html")
+    freiburg_req = visit_url("http://localhost/wohnungen/vermietung/freiburg2.html")
 
     #check if request was successful
     if freiburg_req.status_code == 200:
@@ -326,10 +327,10 @@ else:
                 #get and add the name, mail and phone number from the asp div
                 asp_name = asp_div.find('strong').get_text(strip=True)
                 result['Kontakt'] = asp_name
-                print(asp_div.find('a'))
+                #print(asp_div.find('a'))
                 asp_mail = asp_div.find('a').get('href').replace('mailto:', '') #strip mailto: from the mail as it is not needed
                 result['Mail'] = asp_mail
-                print(asp_mail)
+                #print(asp_mail)
                 asp_phone = extract_phone_number(asp_div)
                 result['Telefon'] = asp_phone
 
@@ -341,8 +342,12 @@ else:
             add_new_search_result(result)
 
             #send telegram message with flat information.
-            print(construct_flat_result_message(result))
-            asyncio.run(send_telegram_message(*construct_flat_result_message(result)))
+            #!experimental | check if config works. | need to move the check because of result counter
+            if float(result['Wohnfläche'].split()[0].replace(',', '.')) >= config['Minimale Wohnfläche'] and float(result['Kaltmiete'].split()[0].replace(',', '.')) <= config['Maximale Kaltmiete']:
+                print(construct_flat_result_message(result))
+                asyncio.run(send_telegram_message(*construct_flat_result_message(result)))
+            else:
+                print("Flat does not meet the requirements. Ignoring it.")
 
         #end of day message handling && reset run counter
         if read_counter(run_counter_path) == max_runs_per_day:
