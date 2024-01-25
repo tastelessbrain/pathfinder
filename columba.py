@@ -109,10 +109,10 @@ def send_email(flat_data, previev):
 
     #maildata
     if previev == True:
-        mail_to = "acc.register@outlook.de"
+        mail_to = "acc.register+botprev@outlook.de"
     elif previev == False:
         mail_to = flat_data['Mail']
-    mail_bcc = "acc.register+bcc@outlook.de"
+    mail_bcc = "acc.register+botprev@outlook.de"
     mail_subject = f"Bewerbung auf die {flat_data['Zimmer']}-Zimmer Wohnung | {flat_data['Adresse']}."
 
     # Create the email
